@@ -104,7 +104,7 @@ export default function DriverProfileScreen() {
           <Text style={styles.logoutText}>Se déconnecter</Text>
         </TouchableOpacity>
 
-        <Text style={styles.version}>Khabi v1.0.0</Text>
+        <Text style={styles.version}>Kabi v1.0.0</Text>
       </ScrollView>
     </View>
   );

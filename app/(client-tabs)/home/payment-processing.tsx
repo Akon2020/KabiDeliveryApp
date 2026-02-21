@@ -5,10 +5,12 @@ import {
   StyleSheet,
   Animated,
   Easing,
+  Image,
 } from 'react-native';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { usePayment } from '@/providers/PaymentProvider';
+import { PAYMENT_METHODS } from '@/mocks/payments';
 import * as Haptics from 'expo-haptics';
 
 export default function PaymentProcessingScreen() {
@@ -99,7 +101,19 @@ export default function PaymentProcessingScreen() {
             <View style={styles.loaderArc} />
           </Animated.View>
           <View style={styles.loaderCenter}>
-            <Text style={styles.loaderIcon}>📱</Text>
+            {(() => {
+              const methodData = PAYMENT_METHODS.find((m) => m.id === currentPayment?.method);
+              if (methodData?.iconUrl) {
+                return (
+                  <Image
+                    source={{ uri: methodData.iconUrl }}
+                    style={styles.loaderLogo}
+                    resizeMode="contain"
+                  />
+                );
+              }
+              return <Text style={styles.loaderIcon}>{methodData?.icon ?? '💵'}</Text>;
+            })()}
           </View>
         </Animated.View>
 
@@ -202,6 +216,11 @@ const styles = StyleSheet.create({
   },
   loaderIcon: {
     fontSize: 32,
+  },
+  loaderLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
   },
   title: {
     fontSize: 24,

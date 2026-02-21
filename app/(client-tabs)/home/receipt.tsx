@@ -83,7 +83,7 @@ function buildReceiptHtml(params: {
           <line x1="10" y1="9" x2="8" y2="9"/>
         </svg>
       </div>
-      <p class="brand">Khabi Dealer</p>
+      <p class="brand">Kabi Delivery</p>
       <p class="subtitle">Reçu de paiement</p>
     </div>
     <hr class="divider"/>
@@ -111,7 +111,7 @@ function buildReceiptHtml(params: {
       <p class="footer-text">Merci pour votre commande !</p>
     </div>
   </div>
-  <p class="watermark">Khabi Dealer — Kinshasa, RDC</p>
+  <p class="watermark">Kabi Delivery — RDC</p>
 </body>
 </html>`;
 }
@@ -211,7 +211,7 @@ export default function ReceiptScreen() {
       console.log('[Receipt] Share PDF at:', uri);
       await Sharing.shareAsync(uri, {
         mimeType: 'application/pdf',
-        dialogTitle: `Reçu Khabi Dealer - ${order?.id ?? ''}`,
+        dialogTitle: `Reçu Kabi Delivery - ${order?.id ?? ''}`,
       });
     } catch (error) {
       console.log('[Receipt] Share error:', error);
@@ -243,7 +243,7 @@ export default function ReceiptScreen() {
             <View style={styles.receiptLogoCircle}>
               <FileText size={28} color={theme.primary} strokeWidth={1.8} />
             </View>
-            <Text style={styles.receiptBrand}>Khabi Dealer</Text>
+            <Text style={styles.receiptBrand}>Kabi Delivery</Text>
             <Text style={styles.receiptSubtitle}>Reçu de paiement</Text>
           </View>
 

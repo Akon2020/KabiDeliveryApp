@@ -11,11 +11,17 @@ import { CheckCircle, Receipt, Home, ArrowRight } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { useOrders } from '@/providers/OrdersProvider';
 import { usePayment } from '@/providers/PaymentProvider';
+import { useCart } from '@/providers/CartProvider';
 
 export default function PaymentSuccessScreen() {
   const { orderId, paymentId } = useLocalSearchParams<{ orderId: string; paymentId: string }>();
   const { orders } = useOrders();
   const { currentPayment } = usePayment();
+  const { clearCart } = useCart();
+
+  useEffect(() => {
+    clearCart();
+  }, []);
 
   const order = orders.find((o) => o.id === orderId);
 

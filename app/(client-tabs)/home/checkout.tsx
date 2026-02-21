@@ -19,7 +19,7 @@ import { generateOrderTimeline } from '@/mocks/orders';
 import * as Haptics from 'expo-haptics';
 
 export default function CheckoutScreen() {
-  const { items, totalAmount, deliveryFee, clearCart, activeServiceId } = useCart();
+  const { items, totalAmount, deliveryFee, activeServiceId } = useCart();
   const { addOrder } = useOrders();
   const { user } = useAuth();
 
@@ -57,13 +57,12 @@ export default function CheckoutScreen() {
     };
 
     addOrder(order);
-    clearCart();
 
     router.replace({
       pathname: '/(client-tabs)/home/payment-method' as any,
       params: { orderId },
     });
-  }, [deliveryAddress, notes, items, totalAmount, deliveryFee, user, activeServiceId, addOrder, clearCart]);
+  }, [deliveryAddress, notes, items, totalAmount, deliveryFee, user, activeServiceId, addOrder]);
 
   return (
     <View style={styles.container}>
