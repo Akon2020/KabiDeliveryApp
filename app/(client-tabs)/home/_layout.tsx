@@ -19,6 +19,11 @@ export default function HomeLayout() {
       <Stack.Screen name="checkout" options={{ title: 'Checkout' }} />
       <Stack.Screen name="create-parcel" options={{ title: 'Envoyer un colis' }} />
       <Stack.Screen name="order-recap" options={{ title: 'Récapitulatif', headerBackVisible: false }} />
+      <Stack.Screen name="payment-method" options={{ title: 'Paiement' }} />
+      <Stack.Screen name="payment-processing" options={{ headerShown: false }} />
+      <Stack.Screen name="payment-success" options={{ headerShown: false }} />
+      <Stack.Screen name="payment-failed" options={{ headerShown: false }} />
+      <Stack.Screen name="receipt" options={{ title: 'Reçu' }} />
     </Stack>
   );
 }

@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { MapPin, FileText, CreditCard, Check } from 'lucide-react-native';
+import { MapPin, FileText, ShoppingBag } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { useCart } from '@/providers/CartProvider';
 import { useOrders } from '@/providers/OrdersProvider';
@@ -25,7 +25,6 @@ export default function CheckoutScreen() {
 
   const [deliveryAddress, setDeliveryAddress] = useState<string>('45 Av. du Commerce, Lingwala, Kinshasa');
   const [notes, setNotes] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
 
   const handleOrder = useCallback(() => {
     if (!deliveryAddress.trim()) {
@@ -61,16 +60,10 @@ export default function CheckoutScreen() {
     clearCart();
 
     router.replace({
-      pathname: '/(client-tabs)/home/order-recap' as any,
+      pathname: '/(client-tabs)/home/payment-method' as any,
       params: { orderId },
     });
   }, [deliveryAddress, notes, items, totalAmount, deliveryFee, user, activeServiceId, addOrder, clearCart]);
-
-  const PAYMENT_METHODS = [
-    { id: 'cash', label: 'Cash à la livraison', icon: '💵' },
-    { id: 'mpesa', label: 'M-Pesa', icon: '📱' },
-    { id: 'airtel', label: 'Airtel Money', icon: '📲' },
-  ];
 
   return (
     <View style={styles.container}>
@@ -112,40 +105,11 @@ export default function CheckoutScreen() {
           />
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <CreditCard size={20} color={theme.success} strokeWidth={2} />
-            <Text style={styles.sectionTitle}>Mode de paiement</Text>
-          </View>
-          {PAYMENT_METHODS.map((method) => (
-            <TouchableOpacity
-              key={method.id}
-              style={[
-                styles.paymentOption,
-                paymentMethod === method.id && styles.paymentOptionActive,
-              ]}
-              onPress={() => setPaymentMethod(method.id)}
-            >
-              <Text style={styles.paymentIcon}>{method.icon}</Text>
-              <Text
-                style={[
-                  styles.paymentLabel,
-                  paymentMethod === method.id && styles.paymentLabelActive,
-                ]}
-              >
-                {method.label}
-              </Text>
-              {paymentMethod === method.id && (
-                <View style={styles.paymentCheck}>
-                  <Check size={16} color="#FFF" strokeWidth={3} />
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Récapitulatif</Text>
+          <View style={styles.summaryHeader}>
+            <ShoppingBag size={18} color={theme.primary} strokeWidth={2} />
+            <Text style={styles.summaryTitle}>Récapitulatif de la commande</Text>
+          </View>
           {items.map((item) => (
             <View key={item.product.id} style={styles.summaryRow}>
               <Text style={styles.summaryItemName}>
@@ -235,53 +199,22 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
   },
-  paymentOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.surface,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: theme.border,
-    padding: 16,
-    marginBottom: 10,
-    gap: 12,
-  },
-  paymentOptionActive: {
-    borderColor: theme.primary,
-    backgroundColor: theme.primaryLight,
-  },
-  paymentIcon: {
-    fontSize: 22,
-  },
-  paymentLabel: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '500' as const,
-    color: theme.text,
-  },
-  paymentLabelActive: {
-    fontWeight: '600' as const,
-    color: theme.primaryDark,
-  },
-  paymentCheck: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: theme.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   summaryCard: {
     backgroundColor: theme.surface,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
   },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
   summaryTitle: {
     fontSize: 16,
     fontWeight: '700' as const,
     color: theme.text,
-    marginBottom: 16,
   },
   summaryRow: {
     flexDirection: 'row',

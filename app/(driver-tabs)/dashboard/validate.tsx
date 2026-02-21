@@ -10,7 +10,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
-import { ShieldCheck, Camera, CheckCircle } from 'lucide-react-native';
+import { ShieldCheck, Camera, CheckCircle, CreditCard, AlertTriangle } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { useOrders } from '@/providers/OrdersProvider';
 import * as Haptics from 'expo-haptics';
@@ -22,6 +22,7 @@ export default function ValidateDeliveryScreen() {
   const [photoTaken, setPhotoTaken] = useState<boolean>(false);
   const [pinError, setPinError] = useState<string>('');
   const [isComplete, setIsComplete] = useState<boolean>(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState<boolean>(false);
   const successAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
 
@@ -41,7 +42,13 @@ export default function ValidateDeliveryScreen() {
       return;
     }
 
+    if (!photoTaken) {
+      Alert.alert('Photo requise', 'Veuillez prendre une photo comme preuve de livraison avant de valider.');
+      return;
+    }
+
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setPaymentConfirmed(true);
     updateMissionStatus(mission.id, 'delivered');
     setIsComplete(true);
 
@@ -81,6 +88,10 @@ export default function ValidateDeliveryScreen() {
             Félicitations ! Vous avez gagné{' '}
             <Text style={styles.successFee}>{mission?.deliveryFee.toLocaleString()} FC</Text>
           </Text>
+          <View style={styles.paymentBadge}>
+            <CreditCard size={18} color={theme.success} strokeWidth={2} />
+            <Text style={styles.paymentBadgeText}>Paiement confirmé</Text>
+          </View>
         </Animated.View>
       </View>
     );
@@ -190,6 +201,25 @@ export default function ValidateDeliveryScreen() {
           <Text style={styles.clientValue}>{mission.clientName}</Text>
           <Text style={styles.clientPhone}>{mission.clientPhone}</Text>
         </View>
+
+        {!photoTaken && (
+          <View style={styles.warningCard}>
+            <AlertTriangle size={18} color={theme.accent} strokeWidth={2} />
+            <Text style={styles.warningText}>
+              La photo de preuve est obligatoire pour clôturer la livraison
+            </Text>
+          </View>
+        )}
+
+        {paymentConfirmed && (
+          <View style={styles.paymentConfirmCard}>
+            <CreditCard size={20} color={theme.success} strokeWidth={2} />
+            <View style={styles.paymentConfirmInfo}>
+              <Text style={styles.paymentConfirmTitle}>Paiement client confirmé</Text>
+              <Text style={styles.paymentConfirmAmount}>{mission.totalAmount.toLocaleString()} FC</Text>
+            </View>
+          </View>
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -427,5 +457,59 @@ const styles = StyleSheet.create({
   successFee: {
     fontWeight: '800' as const,
     color: theme.accent,
+  },
+  paymentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: theme.successLight,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginTop: 20,
+  },
+  paymentBadgeText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: theme.success,
+  },
+  warningCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: theme.accentLight,
+    borderRadius: 14,
+    padding: 14,
+    gap: 10,
+    marginBottom: 16,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: theme.accent,
+    fontWeight: '500' as const,
+    lineHeight: 19,
+  },
+  paymentConfirmCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.successLight,
+    borderRadius: 16,
+    padding: 16,
+    gap: 14,
+    marginBottom: 16,
+  },
+  paymentConfirmInfo: {
+    flex: 1,
+  },
+  paymentConfirmTitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: theme.success,
+    marginBottom: 2,
+  },
+  paymentConfirmAmount: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    color: theme.text,
   },
 });

@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { CartProvider } from "@/providers/CartProvider";
 import { OrdersProvider } from "@/providers/OrdersProvider";
+import { PaymentProvider } from "@/providers/PaymentProvider";
 import { theme } from "@/constants/theme";
 
 SplashScreen.preventAutoHideAsync();
@@ -39,7 +40,9 @@ export default function RootLayout() {
         <AuthProvider>
           <CartProvider>
             <OrdersProvider>
-              <RootLayoutNav />
+              <PaymentProvider>
+                <RootLayoutNav />
+              </PaymentProvider>
             </OrdersProvider>
           </CartProvider>
         </AuthProvider>
