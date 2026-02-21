@@ -81,7 +81,7 @@ export default function CreateParcelScreen() {
     addOrder(order);
 
     router.replace({
-      pathname: '/(client-tabs)/home/order-recap' as any,
+      pathname: '/(client-tabs)/home/payment-method' as any,
       params: { orderId },
     });
   }, [isValid, receiverName, receiverPhone, pickupAddress, deliveryAddress, description, weight, notes, user, addOrder]);

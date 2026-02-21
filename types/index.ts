@@ -106,3 +106,32 @@ export interface ParcelOrder {
   weight: string;
   notes?: string;
 }
+
+export type PaymentMethod = 'cash' | 'mpesa' | 'airtel' | 'orange';
+
+export type PaymentStatus = 'pending' | 'processing' | 'success' | 'failed' | 'cancelled';
+
+export interface Payment {
+  id: string;
+  orderId: string;
+  method: PaymentMethod;
+  amount: number;
+  fee: number;
+  total: number;
+  status: PaymentStatus;
+  phoneNumber?: string;
+  transactionRef?: string;
+  createdAt: string;
+  completedAt?: string;
+  failureReason?: string;
+}
+
+export interface PaymentMethodOption {
+  id: PaymentMethod;
+  label: string;
+  description: string;
+  icon: string;
+  iconUrl?: string;
+  color: string;
+  bg: string;
+}
