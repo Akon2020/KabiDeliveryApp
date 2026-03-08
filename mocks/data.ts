@@ -9,7 +9,7 @@ export const ONBOARDING_SLIDES = [
   {
     id: '1',
     title: 'Commandez facilement',
-    description: 'Restaurants, courses, pharmacie ou colis — tout ce dont vous avez besoin, livré chez vous en quelques minutes.',
+    description: 'Restaurants, courses, pharmacie ou colis tout ce dont vous avez besoin, livré chez vous en quelques minutes.',
     icon: 'Package',
   },
   {
