@@ -19,6 +19,10 @@
         "monochromeImage": "./assets/images/logo.png"
       },
       "package": "app.akonizk.kabideliveryapp",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -38,6 +42,12 @@
           "dark": {
             "backgroundColor": "#000000"
           }
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Autorisez Kabi Delivery a acceder a votre position pour trouver des livreurs proches et suivre vos commandes."
         }
       ],
       "expo-font",
