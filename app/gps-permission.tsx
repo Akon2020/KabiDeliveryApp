@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -13,37 +13,11 @@ import { MapPin, Navigation } from 'lucide-react-native';
 import { useAuth } from '@/providers/AuthProvider';
 import { theme } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 
 export default function GpsPermissionScreen() {
   const { grantGPS, user } = useAuth();
-
-  const handleAllow = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    if (Platform.OS !== 'web') {
-      try {
-        const Location = await import('expo-location');
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        console.log('[GPS] Permission status:', status);
-        if (status !== 'granted') {
-          Alert.alert(
-            'Permission requise',
-            'Activez la localisation dans les paramètres pour une meilleure expérience.'
-          );
-        }
-      } catch (err) {
-        console.log('[GPS] Error requesting permission:', err);
-      }
-    }
-
-    grantGPS.mutate();
-    navigateHome();
-  }, [grantGPS, user]);
-
-  const handleSkip = useCallback(() => {
-    grantGPS.mutate();
-    navigateHome();
-  }, [grantGPS, user]);
+  const [isRequesting, setIsRequesting] = useState(false);
 
   const navigateHome = useCallback(() => {
     if (user?.role === 'driver') {
@@ -52,6 +26,70 @@ export default function GpsPermissionScreen() {
       router.replace('/(client-tabs)/home' as any);
     }
   }, [user]);
+
+  const finalizeFlow = useCallback(() => {
+    if (!grantGPS.isPending) {
+      grantGPS.mutate();
+    }
+    navigateHome();
+  }, [grantGPS, navigateHome]);
+
+  const handleAllow = useCallback(async () => {
+    if (isRequesting) return;
+
+    setIsRequesting(true);
+
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      if (Platform.OS === 'web') {
+        finalizeFlow();
+        return;
+      }
+
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled) {
+        Alert.alert(
+          'Localisation desactivee',
+          'Activez le GPS de votre telephone puis reessayez.'
+        );
+        return;
+      }
+
+      const currentPermission = await Location.getForegroundPermissionsAsync();
+      let status = currentPermission.status;
+
+      if (status !== 'granted') {
+        const requestedPermission =
+          await Location.requestForegroundPermissionsAsync();
+        status = requestedPermission.status;
+      }
+
+      console.log('[GPS] Permission status:', status);
+
+      if (status === 'granted') {
+        finalizeFlow();
+        return;
+      }
+
+      Alert.alert(
+        'Permission requise',
+        'Activez la localisation dans les parametres pour une meilleure experience.'
+      );
+    } catch (err) {
+      console.log('[GPS] Error requesting permission:', err);
+      Alert.alert(
+        'Erreur de localisation',
+        "Impossible de demander la permission de localisation sur cet appareil."
+      );
+    } finally {
+      setIsRequesting(false);
+    }
+  }, [finalizeFlow, isRequesting]);
+
+  const handleSkip = useCallback(() => {
+    finalizeFlow();
+  }, [finalizeFlow]);
 
   return (
     <View style={styles.container}>
@@ -79,10 +117,13 @@ export default function GpsPermissionScreen() {
             style={styles.allowButton}
             onPress={handleAllow}
             activeOpacity={0.85}
+            disabled={isRequesting}
             testID="allow-gps-button"
           >
             <Navigation size={20} color="#FFFFFF" strokeWidth={2} />
-            <Text style={styles.allowButtonText}>Autoriser la localisation</Text>
+            <Text style={styles.allowButtonText}>
+              {isRequesting ? 'Verification...' : 'Autoriser la localisation'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
