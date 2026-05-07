@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback } from "react";
 import {
   View,
   Text,
@@ -6,13 +6,13 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
-} from 'react-native';
-import { router } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { MapPin, Navigation } from 'lucide-react-native';
-import { useAuth } from '@/providers/AuthProvider';
-import { theme } from '@/constants/theme';
-import * as Haptics from 'expo-haptics';
+} from "react-native";
+import { router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { MapPin, Navigation } from "lucide-react-native";
+import { useAuth } from "@/providers/AuthProvider";
+import { theme } from "@/constants/theme";
+import * as Haptics from "expo-haptics";
 
 export default function GpsPermissionScreen() {
   const { grantGPS, user } = useAuth();
@@ -20,36 +20,46 @@ export default function GpsPermissionScreen() {
   const handleAllow = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    if (Platform.OS !== 'web') {
+    if (Platform.OS !== "web") {
       try {
-        const Location = await import('expo-location');
+        const Location = await import("expo-location");
         const { status } = await Location.requestForegroundPermissionsAsync();
-        console.log('[GPS] Permission status:', status);
-        if (status !== 'granted') {
+        console.log("[GPS] Permission status:", status);
+        if (status !== "granted") {
           Alert.alert(
-            'Permission requise',
-            'Activez la localisation dans les paramètres pour une meilleure expérience.'
+            "Permission requise",
+            "Activez la localisation dans les paramètres pour une meilleure expérience.",
           );
         }
       } catch (err) {
-        console.log('[GPS] Error requesting permission:', err);
+        console.log("[GPS] Error requesting permission:", err);
       }
     }
 
-    grantGPS.mutate();
-    navigateHome();
+    try {
+      await grantGPS.mutateAsync();
+      navigateHome();
+    } catch (err) {
+      console.error("[GPS] Error granting GPS permission:", err);
+      Alert.alert("Erreur", "Une erreur est survenue. Veuillez réessayer.");
+    }
   }, [grantGPS, user]);
 
-  const handleSkip = useCallback(() => {
-    grantGPS.mutate();
-    navigateHome();
+  const handleSkip = useCallback(async () => {
+    try {
+      await grantGPS.mutateAsync();
+      navigateHome();
+    } catch (err) {
+      console.error("[GPS] Error granting GPS permission:", err);
+      Alert.alert("Erreur", "Une erreur est survenue. Veuillez réessayer.");
+    }
   }, [grantGPS, user]);
 
   const navigateHome = useCallback(() => {
-    if (user?.role === 'driver') {
-      router.replace('/(driver-tabs)/dashboard' as any);
+    if (user?.role === "driver") {
+      router.replace("/(driver-tabs)/dashboard" as any);
     } else {
-      router.replace('/(client-tabs)/home' as any);
+      router.replace("/(client-tabs)/home" as any);
     }
   }, [user]);
 
@@ -71,7 +81,8 @@ export default function GpsPermissionScreen() {
 
         <Text style={styles.title}>Activez la localisation</Text>
         <Text style={styles.description}>
-          Pour vous proposer les meilleurs livreurs à proximité et suivre vos commandes en temps réel
+          Pour vous proposer les meilleurs livreurs à proximité et suivre vos
+          commandes en temps réel
         </Text>
 
         <View style={styles.buttons}>
@@ -82,7 +93,9 @@ export default function GpsPermissionScreen() {
             testID="allow-gps-button"
           >
             <Navigation size={20} color="#FFFFFF" strokeWidth={2} />
-            <Text style={styles.allowButtonText}>Autoriser la localisation</Text>
+            <Text style={styles.allowButtonText}>
+              Autoriser la localisation
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -105,15 +118,15 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 32,
   },
   illustration: {
     width: 200,
     height: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 48,
   },
   outerCircle: {
@@ -121,24 +134,24 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 80,
     backgroundColor: theme.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   middleCircle: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: 'rgba(10,143,123,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(10,143,123,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   innerCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
     backgroundColor: theme.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -146,7 +159,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   pulse1: {
-    position: 'absolute',
+    position: "absolute",
     top: 10,
     right: 20,
     width: 14,
@@ -156,7 +169,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   pulse2: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 25,
     left: 15,
     width: 10,
@@ -167,29 +180,29 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: '700' as const,
+    fontWeight: "700" as const,
     color: theme.text,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 12,
   },
   description: {
     fontSize: 16,
     color: theme.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 24,
     marginBottom: 48,
   },
   buttons: {
-    width: '100%',
+    width: "100%",
     gap: 16,
   },
   allowButton: {
     backgroundColor: theme.primary,
     borderRadius: 16,
     paddingVertical: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 10,
     shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 6 },
@@ -199,16 +212,16 @@ const styles = StyleSheet.create({
   },
   allowButtonText: {
     fontSize: 17,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
+    fontWeight: "600" as const,
+    color: "#FFFFFF",
   },
   skipButton: {
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
   },
   skipButtonText: {
     fontSize: 16,
     color: theme.textSecondary,
-    fontWeight: '500' as const,
+    fontWeight: "500" as const,
   },
 });
