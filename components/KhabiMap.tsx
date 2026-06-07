@@ -1,57 +1,102 @@
+import React from 'react';
 import { View, StyleSheet, Text, Platform } from 'react-native';
 import { MapPin } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { DEFAULT_LOCATION } from '@/mocks/data';
-import MapView, { Marker } from 'react-native-maps';
 
 interface KhabiMapProps {
   height?: number;
   showPin?: boolean;
 }
 
+type MapsModule = typeof import('react-native-maps');
+let MapsModuleRef: MapsModule | null = null;
+let MapsLoadFailed = false;
+
+function loadMapsModule(): MapsModule | null {
+  if (MapsModuleRef || MapsLoadFailed) return MapsModuleRef;
+  try {
+    MapsModuleRef = require('react-native-maps') as MapsModule;
+    return MapsModuleRef;
+  } catch (err) {
+    console.log('[KhabiMap] react-native-maps unavailable, falling back to placeholder:', err);
+    MapsLoadFailed = true;
+    return null;
+  }
+}
+
+class MapErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: unknown) {
+    console.log('[KhabiMap] MapView render failed, using fallback:', error);
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
+
+function MapPlaceholder({ height, showPin }: { height: number; showPin: boolean }) {
+  return (
+    <View style={[styles.webMap, { height }]}>
+      <View style={styles.webMapGrid}>
+        {Array.from({ length: 12 }).map((_, i) => (
+          <View key={i} style={styles.webMapBlock} />
+        ))}
+      </View>
+      {showPin && (
+        <View style={styles.pinContainer}>
+          <View style={styles.pinShadow} />
+          <View style={styles.pinIcon}>
+            <MapPin size={24} color={theme.primary} strokeWidth={2} fill={theme.primaryLight} />
+          </View>
+        </View>
+      )}
+      <View style={styles.webMapLabel}>
+        <Text style={styles.webMapLabelText}>Kinshasa, RDC</Text>
+      </View>
+    </View>
+  );
+}
+
 export default function KhabiMap({ height = 220, showPin = true }: KhabiMapProps) {
   if (Platform.OS === 'web') {
-    return (
-      <View style={[styles.webMap, { height }]}>
-        <View style={styles.webMapGrid}>
-          {Array.from({ length: 12 }).map((_, i) => (
-            <View key={i} style={styles.webMapBlock} />
-          ))}
-        </View>
-        {showPin && (
-          <View style={styles.pinContainer}>
-            <View style={styles.pinShadow} />
-            <View style={styles.pinIcon}>
-              <MapPin size={24} color={theme.primary} strokeWidth={2} fill={theme.primaryLight} />
-            </View>
-          </View>
-        )}
-        <View style={styles.webMapLabel}>
-          <Text style={styles.webMapLabelText}>Kinshasa, RDC</Text>
-        </View>
-      </View>
-    );
+    return <MapPlaceholder height={height} showPin={showPin} />;
   }
 
+  const Maps = loadMapsModule();
+  if (!Maps) {
+    return <MapPlaceholder height={height} showPin={showPin} />;
+  }
+
+  const { default: MapView, Marker } = Maps;
+
   return (
-    <View style={[styles.mapContainer, { height }]}>
-      <MapView
-        style={styles.map}
-        initialRegion={DEFAULT_LOCATION}
-        showsUserLocation
-        showsMyLocationButton={false}
-      >
-        {showPin && (
-          <Marker
-            coordinate={{
-              latitude: DEFAULT_LOCATION.latitude,
-              longitude: DEFAULT_LOCATION.longitude,
-            }}
-            title="Votre position"
-          />
-        )}
-      </MapView>
-    </View>
+    <MapErrorBoundary fallback={<MapPlaceholder height={height} showPin={showPin} />}>
+      <View style={[styles.mapContainer, { height }]}>
+        <MapView
+          style={styles.map}
+          initialRegion={DEFAULT_LOCATION}
+          showsMyLocationButton={false}
+        >
+          {showPin && (
+            <Marker
+              coordinate={{
+                latitude: DEFAULT_LOCATION.latitude,
+                longitude: DEFAULT_LOCATION.longitude,
+              }}
+              title="Votre position"
+            />
+          )}
+        </MapView>
+      </View>
+    </MapErrorBoundary>
   );
 }
 

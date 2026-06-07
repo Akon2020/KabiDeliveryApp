@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  InteractionManager,
 } from "react-native";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -16,44 +17,7 @@ import * as Haptics from "expo-haptics";
 
 export default function GpsPermissionScreen() {
   const { grantGPS, user } = useAuth();
-
-  const handleAllow = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    if (Platform.OS !== "web") {
-      try {
-        const Location = await import("expo-location");
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        console.log("[GPS] Permission status:", status);
-        if (status !== "granted") {
-          Alert.alert(
-            "Permission requise",
-            "Activez la localisation dans les paramètres pour une meilleure expérience.",
-          );
-        }
-      } catch (err) {
-        console.log("[GPS] Error requesting permission:", err);
-      }
-    }
-
-    try {
-      await grantGPS.mutateAsync();
-      navigateHome();
-    } catch (err) {
-      console.error("[GPS] Error granting GPS permission:", err);
-      Alert.alert("Erreur", "Une erreur est survenue. Veuillez réessayer.");
-    }
-  }, [grantGPS, user]);
-
-  const handleSkip = useCallback(async () => {
-    try {
-      await grantGPS.mutateAsync();
-      navigateHome();
-    } catch (err) {
-      console.error("[GPS] Error granting GPS permission:", err);
-      Alert.alert("Erreur", "Une erreur est survenue. Veuillez réessayer.");
-    }
-  }, [grantGPS, user]);
+  const isProcessingRef = useRef<boolean>(false);
 
   const navigateHome = useCallback(() => {
     if (user?.role === "driver") {
@@ -62,6 +26,69 @@ export default function GpsPermissionScreen() {
       router.replace("/(client-tabs)/home" as any);
     }
   }, [user]);
+
+  const requestPermissionSafely = useCallback(async () => {
+    if (Platform.OS === "web") return;
+    try {
+      const Location = require("expo-location");
+      if (!Location?.requestForegroundPermissionsAsync) {
+        console.log("[GPS] expo-location module unavailable");
+        return;
+      }
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      console.log("[GPS] Permission status:", status);
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission requise",
+          "Activez la localisation dans les paramètres pour une meilleure expérience.",
+        );
+      }
+    } catch (err) {
+      console.log("[GPS] Error requesting permission:", err);
+    }
+  }, []);
+
+  const handleAllow = useCallback(async () => {
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
+
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    } catch {}
+
+    await requestPermissionSafely();
+
+    try {
+      await grantGPS.mutateAsync();
+    } catch (err) {
+      console.error("[GPS] Error persisting GPS grant:", err);
+      isProcessingRef.current = false;
+      Alert.alert("Erreur", "Une erreur est survenue. Veuillez réessayer.");
+      return;
+    }
+
+    InteractionManager.runAfterInteractions(() => {
+      navigateHome();
+    });
+  }, [grantGPS, requestPermissionSafely, navigateHome]);
+
+  const handleSkip = useCallback(async () => {
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
+
+    try {
+      await grantGPS.mutateAsync();
+    } catch (err) {
+      console.error("[GPS] Error persisting GPS skip:", err);
+      isProcessingRef.current = false;
+      Alert.alert("Erreur", "Une erreur est survenue. Veuillez réessayer.");
+      return;
+    }
+
+    InteractionManager.runAfterInteractions(() => {
+      navigateHome();
+    });
+  }, [grantGPS, navigateHome]);
 
   return (
     <View style={styles.container}>
