@@ -8,10 +8,10 @@ import { theme } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
 
 const MENU_ITEMS = [
-  { id: 'docs', label: 'Mes documents', icon: FileText, color: theme.accent },
-  { id: 'ratings', label: 'Évaluations', icon: Star, color: '#FBBF24' },
-  { id: 'settings', label: 'Paramètres', icon: Settings, color: theme.textSecondary },
-  { id: 'help', label: 'Aide & Support', icon: CircleHelp, color: '#7C3AED' },
+  { id: 'docs', label: 'Mes documents', icon: FileText, color: theme.accent, route: null },
+  { id: 'ratings', label: 'Évaluations', icon: Star, color: '#FBBF24', route: null },
+  { id: 'settings', label: 'Paramètres', icon: Settings, color: theme.textSecondary, route: '/settings' },
+  { id: 'help', label: 'Aide & Support', icon: CircleHelp, color: '#7C3AED', route: '/help' },
 ];
 
 export default function DriverProfileScreen() {
@@ -84,6 +84,10 @@ export default function DriverProfileScreen() {
               key={item.id}
               style={[styles.menuItem, index < MENU_ITEMS.length - 1 && styles.menuItemBorder]}
               activeOpacity={0.7}
+              onPress={() => {
+                if (item.route) router.push(item.route as any);
+              }}
+              testID={`menu-${item.id}`}
             >
               <View style={[styles.menuIcon, { backgroundColor: `${item.color}14` }]}>
                 <item.icon size={20} color={item.color} strokeWidth={1.8} />

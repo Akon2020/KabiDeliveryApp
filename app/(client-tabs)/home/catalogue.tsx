@@ -6,10 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Animated,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
-import { ShoppingCart, Plus, Minus, ArrowRight } from 'lucide-react-native';
+import { Plus, Minus, ArrowRight, Search, X, SlidersHorizontal, Check } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { useCart } from '@/providers/CartProvider';
 import { getProductsByService, getProductCategories } from '@/mocks/products';
@@ -17,19 +18,46 @@ import { SERVICES } from '@/mocks/services';
 import { Product } from '@/types';
 import * as Haptics from 'expo-haptics';
 
+type SortKind = 'default' | 'price-asc' | 'price-desc' | 'name';
+
+const SORT_LABELS: Record<SortKind, string> = {
+  default: 'Recommandé',
+  'price-asc': 'Prix croissant',
+  'price-desc': 'Prix décroissant',
+  name: 'Nom (A-Z)',
+};
+
 export default function CatalogueScreen() {
   const { serviceId } = useLocalSearchParams<{ serviceId: string }>();
   const { items, totalItems, totalAmount, addItem, updateQuantity } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<string>('Tous');
+  const [query, setQuery] = useState<string>('');
+  const [sort, setSort] = useState<SortKind>('default');
+  const [sortOpen, setSortOpen] = useState<boolean>(false);
 
   const service = SERVICES.find((s) => s.id === serviceId);
   const allProducts = useMemo(() => getProductsByService(serviceId ?? ''), [serviceId]);
   const categories = useMemo(() => ['Tous', ...getProductCategories(serviceId ?? '')], [serviceId]);
 
   const filteredProducts = useMemo(() => {
-    if (selectedCategory === 'Tous') return allProducts;
-    return allProducts.filter((p) => p.category === selectedCategory);
-  }, [allProducts, selectedCategory]);
+    let list = allProducts;
+    if (selectedCategory !== 'Tous') {
+      list = list.filter((p) => p.category === selectedCategory);
+    }
+    const q = query.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q),
+      );
+    }
+    if (sort === 'price-asc') list = [...list].sort((a, b) => a.price - b.price);
+    else if (sort === 'price-desc') list = [...list].sort((a, b) => b.price - a.price);
+    else if (sort === 'name') list = [...list].sort((a, b) => a.name.localeCompare(b.name));
+    return list;
+  }, [allProducts, selectedCategory, query, sort]);
 
   const getItemQuantity = useCallback(
     (productId: string) => {
@@ -63,6 +91,32 @@ export default function CatalogueScreen() {
         }}
       />
 
+      <View style={styles.searchRow}>
+        <View style={styles.searchBar}>
+          <Search size={18} color={theme.textLight} strokeWidth={2} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Rechercher..."
+            placeholderTextColor={theme.textLight}
+            value={query}
+            onChangeText={setQuery}
+            testID="catalogue-search"
+          />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => setQuery('')} testID="clear-search">
+              <X size={18} color={theme.textLight} strokeWidth={2} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <TouchableOpacity
+          style={styles.sortBtn}
+          onPress={() => setSortOpen(true)}
+          testID="open-sort"
+        >
+          <SlidersHorizontal size={18} color={theme.primary} strokeWidth={2} />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -89,13 +143,23 @@ export default function CatalogueScreen() {
         contentContainerStyle={styles.productsContent}
         showsVerticalScrollIndicator={false}
       >
+        {filteredProducts.length === 0 && (
+          <View style={styles.emptyResults}>
+            <Text style={styles.emptyResultsTitle}>Aucun résultat</Text>
+            <Text style={styles.emptyResultsDesc}>
+              Essayez une autre recherche ou catégorie.
+            </Text>
+          </View>
+        )}
         {filteredProducts.map((product) => {
           const qty = getItemQuantity(product.id);
+          const isUnavailable = !product.available;
           return (
             <TouchableOpacity
               key={product.id}
-              style={styles.productCard}
-              activeOpacity={0.85}
+              style={[styles.productCard, isUnavailable && styles.productCardDisabled]}
+              activeOpacity={isUnavailable ? 1 : 0.85}
+              disabled={isUnavailable}
               onPress={() =>
                 router.push({
                   pathname: '/(client-tabs)/home/product' as any,
@@ -103,13 +167,22 @@ export default function CatalogueScreen() {
                 })
               }
             >
-              <Image source={{ uri: product.image }} style={styles.productImage} />
+              <View>
+                <Image source={{ uri: product.image }} style={styles.productImage} />
+                {isUnavailable && (
+                  <View style={styles.unavailableOverlay}>
+                    <Text style={styles.unavailableText}>Indisponible</Text>
+                  </View>
+                )}
+              </View>
               <View style={styles.productInfo}>
                 <Text style={styles.productName} numberOfLines={1}>{product.name}</Text>
                 <Text style={styles.productDesc} numberOfLines={2}>{product.description}</Text>
                 <View style={styles.productBottom}>
                   <Text style={styles.productPrice}>{product.price.toLocaleString()} FC</Text>
-                  {qty === 0 ? (
+                  {isUnavailable ? (
+                    <Text style={styles.unavailableTag}>Bientôt</Text>
+                  ) : qty === 0 ? (
                     <TouchableOpacity
                       style={styles.addButton}
                       onPress={() => handleAdd(product)}
@@ -140,6 +213,37 @@ export default function CatalogueScreen() {
           );
         })}
         <View style={{ height: 100 }} />
+
+      <Modal
+        visible={sortOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSortOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setSortOpen(false)}
+        >
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>Trier par</Text>
+            {(Object.keys(SORT_LABELS) as SortKind[]).map((s) => (
+              <TouchableOpacity
+                key={s}
+                style={styles.sortRow}
+                onPress={() => {
+                  setSort(s);
+                  setSortOpen(false);
+                }}
+                testID={`sort-${s}`}
+              >
+                <Text style={styles.sortRowText}>{SORT_LABELS[s]}</Text>
+                {sort === s && <Check size={18} color={theme.primary} strokeWidth={2.5} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
       </ScrollView>
 
       {totalItems > 0 && (
@@ -339,5 +443,110 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700' as const,
     color: '#FFF',
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: theme.surface,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: theme.text,
+    paddingVertical: 0,
+  },
+  sortBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  productCardDisabled: {
+    opacity: 0.65,
+  },
+  unavailableOverlay: {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unavailableText: {
+    color: '#FFF',
+    fontWeight: '700' as const,
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+  unavailableTag: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: theme.textLight,
+    backgroundColor: theme.divider,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  emptyResults: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyResultsTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: theme.text,
+    marginBottom: 6,
+  },
+  emptyResultsDesc: {
+    fontSize: 13,
+    color: theme.textSecondary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: theme.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 36,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: theme.text,
+    marginBottom: 16,
+  },
+  sortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.divider,
+  },
+  sortRowText: {
+    fontSize: 15,
+    color: theme.text,
   },
 });

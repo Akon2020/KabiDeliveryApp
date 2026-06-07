@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -30,8 +30,13 @@ const SERVICE_LABELS: Record<string, string> = {
 export default function DriverDashboardScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { pendingMissions, activeMissions, completedMissions, acceptMission, rejectMission, totalEarnings } = useOrders();
+  const { pendingMissions, activeMissions, completedMissions, acceptMission, rejectMission, totalEarnings, scheduleMissionExpiry } = useOrders();
   const [isOnline, setIsOnline] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isOnline) return;
+    pendingMissions.forEach((m) => scheduleMissionExpiry(m.id, 30_000));
+  }, [pendingMissions, isOnline, scheduleMissionExpiry]);
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const firstName = user?.name?.split(' ')[0] ?? 'Livreur';
   const slideAnim = useRef(new Animated.Value(0)).current;

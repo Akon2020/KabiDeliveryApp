@@ -1,9 +1,12 @@
 import { Tabs, useRouter } from 'expo-router';
 import { Home, ClipboardList, User } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
+import { useOrders } from '@/providers/OrdersProvider';
 
 export default function ClientTabLayout() {
   const router = useRouter();
+  const { activeOrders } = useOrders();
+  const activeCount = activeOrders.length;
 
   return (
     <Tabs
@@ -40,6 +43,8 @@ export default function ClientTabLayout() {
         options={{
           title: 'Commandes',
           tabBarIcon: ({ color, size }) => <ClipboardList size={size} color={color} strokeWidth={1.8} />,
+          tabBarBadge: activeCount > 0 ? activeCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: theme.accent, color: '#FFF' },
         }}
       />
       <Tabs.Screen

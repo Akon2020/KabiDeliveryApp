@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Linking,
+  Platform,
 } from 'react-native';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { MapPin, Phone, Package, Navigation, CheckCircle, ArrowRight } from 'lucide-react-native';
@@ -47,6 +49,28 @@ export default function MissionDetailScreen() {
 
     updateMissionStatus(mission.id, nextStep.key);
   }, [mission, updateMissionStatus]);
+
+  const handleCall = useCallback(() => {
+    if (!mission?.clientPhone) return;
+    const normalized = mission.clientPhone.replace(/\s/g, '');
+    Linking.openURL(`tel:${normalized}`).catch(() =>
+      Alert.alert('Erreur', "Impossible de lancer l'appel."),
+    );
+  }, [mission]);
+
+  const handleNavigateTo = useCallback((address: string) => {
+    const q = encodeURIComponent(address);
+    const url = Platform.select({
+      ios: `http://maps.apple.com/?q=${q}`,
+      android: `geo:0,0?q=${q}`,
+      default: `https://www.google.com/maps/search/?api=1&query=${q}`,
+    });
+    if (url) {
+      Linking.openURL(url).catch(() =>
+        Alert.alert('Erreur', 'Impossible d\'ouvrir la navigation.'),
+      );
+    }
+  }, []);
 
   if (!mission) {
     return (
@@ -132,7 +156,11 @@ export default function MissionDetailScreen() {
               <Text style={styles.routeLabel}>Retrait</Text>
               <Text style={styles.routeAddress}>{mission.pickupAddress}</Text>
             </View>
-            <TouchableOpacity style={styles.navButton}>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => handleNavigateTo(mission.pickupAddress)}
+              testID="navigate-pickup"
+            >
               <Navigation size={18} color={theme.primary} strokeWidth={2} />
             </TouchableOpacity>
           </View>
@@ -143,7 +171,11 @@ export default function MissionDetailScreen() {
               <Text style={styles.routeLabel}>Livraison</Text>
               <Text style={styles.routeAddress}>{mission.deliveryAddress}</Text>
             </View>
-            <TouchableOpacity style={styles.navButton}>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => handleNavigateTo(mission.deliveryAddress)}
+              testID="navigate-delivery"
+            >
               <Navigation size={18} color={theme.accent} strokeWidth={2} />
             </TouchableOpacity>
           </View>
@@ -159,7 +191,7 @@ export default function MissionDetailScreen() {
             <Text style={styles.clientName}>{mission.clientName}</Text>
             <Text style={styles.clientPhone}>{mission.clientPhone}</Text>
           </View>
-          <TouchableOpacity style={styles.callBtn}>
+          <TouchableOpacity style={styles.callBtn} onPress={handleCall} testID="call-client">
             <Phone size={20} color={theme.primary} strokeWidth={2} />
           </TouchableOpacity>
         </View>

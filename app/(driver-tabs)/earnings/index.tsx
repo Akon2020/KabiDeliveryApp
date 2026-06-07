@@ -1,7 +1,19 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Wallet, TrendingUp, Calendar, Package, Clock } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { useOrders } from '@/providers/OrdersProvider';
+import { Mission } from '@/types';
+
+type Period = 'day' | 'week' | 'month';
+
+function inPeriod(date: Date, period: Period): boolean {
+  const now = Date.now();
+  const diff = now - date.getTime();
+  if (period === 'day') return diff < 24 * 60 * 60 * 1000;
+  if (period === 'week') return diff < 7 * 24 * 60 * 60 * 1000;
+  return diff < 30 * 24 * 60 * 60 * 1000;
+}
 
 const SERVICE_LABELS: Record<string, string> = {
   food: 'Restaurant',
@@ -13,6 +25,18 @@ const SERVICE_LABELS: Record<string, string> = {
 
 export default function EarningsScreen() {
   const { completedMissions, totalEarnings } = useOrders();
+  const [period, setPeriod] = useState<Period>('month');
+
+  const filteredMissions = useMemo<Mission[]>(() => {
+    return completedMissions.filter((m) => inPeriod(new Date(m.createdAt), period));
+  }, [completedMissions, period]);
+
+  const periodEarnings = useMemo(
+    () => filteredMissions.reduce((s, m) => s + m.deliveryFee, 0),
+    [filteredMissions],
+  );
+
+  const periodLabel = period === 'day' ? "Aujourd'hui" : period === 'week' ? 'Cette semaine' : 'Ce mois';
 
   return (
     <View style={styles.container}>
@@ -20,18 +44,33 @@ export default function EarningsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.periodTabs}>
+          {(['day', 'week', 'month'] as Period[]).map((p) => (
+            <TouchableOpacity
+              key={p}
+              style={[styles.periodTab, period === p && styles.periodTabActive]}
+              onPress={() => setPeriod(p)}
+              testID={`period-${p}`}
+            >
+              <Text style={[styles.periodTabText, period === p && styles.periodTabTextActive]}>
+                {p === 'day' ? 'Jour' : p === 'week' ? 'Semaine' : 'Mois'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <View style={styles.totalCard}>
-          <Text style={styles.totalLabel}>Total ce mois</Text>
-          <Text style={styles.totalAmount}>{totalEarnings.toLocaleString()} FC</Text>
+          <Text style={styles.totalLabel}>{periodLabel}</Text>
+          <Text style={styles.totalAmount}>{periodEarnings.toLocaleString()} FC</Text>
           <View style={styles.totalRow}>
             <View style={styles.totalStat}>
               <Calendar size={16} color={theme.textSecondary} strokeWidth={2} />
-              <Text style={styles.totalStatText}>{completedMissions.length} courses</Text>
+              <Text style={styles.totalStatText}>{filteredMissions.length} courses</Text>
             </View>
             <View style={styles.totalStat}>
               <TrendingUp size={16} color={theme.success} strokeWidth={2} />
               <Text style={[styles.totalStatText, { color: theme.success }]}>
-                {completedMissions.length > 0 ? '+12%' : '+0%'}
+                Total cumulé: {totalEarnings.toLocaleString()} FC
               </Text>
             </View>
           </View>
@@ -39,7 +78,7 @@ export default function EarningsScreen() {
 
         <Text style={styles.sectionTitle}>Historique des livraisons</Text>
 
-        {completedMissions.length === 0 ? (
+        {filteredMissions.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.iconCircle}>
               <Wallet size={40} color={theme.textLight} strokeWidth={1.5} />
@@ -50,7 +89,7 @@ export default function EarningsScreen() {
             </Text>
           </View>
         ) : (
-          completedMissions.map((mission) => (
+          filteredMissions.map((mission) => (
             <View key={mission.id} style={styles.historyCard}>
               <View style={styles.historyLeft}>
                 <View style={styles.historyIcon}>
@@ -228,5 +267,29 @@ const styles = StyleSheet.create({
   historyTotal: {
     fontSize: 11,
     color: theme.textLight,
+  },
+  periodTabs: {
+    flexDirection: 'row',
+    backgroundColor: theme.surface,
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 16,
+  },
+  periodTab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  periodTabActive: {
+    backgroundColor: theme.primary,
+  },
+  periodTabText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: theme.textSecondary,
+  },
+  periodTabTextActive: {
+    color: '#FFF',
   },
 });

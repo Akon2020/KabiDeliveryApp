@@ -16,3 +16,22 @@ export const theme = {
   border: "#E8EEF2",
   divider: "#F1F5F8",
 } as const;
+
+export const Colors = {
+  light: {
+    text: theme.text,
+    background: theme.bg,
+    tint: theme.primary,
+    tabIconDefault: theme.textLight,
+    tabIconSelected: theme.primary,
+    icon: theme.textSecondary,
+  },
+  dark: {
+    text: '#F1F5F8',
+    background: '#0B1728',
+    tint: theme.primary,
+    tabIconDefault: '#6B7A8D',
+    tabIconSelected: theme.primary,
+    icon: '#9BA8B7',
+  },
+} as const;

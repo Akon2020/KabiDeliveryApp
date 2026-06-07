@@ -18,7 +18,7 @@ import { TEST_CREDENTIALS } from '@/mocks/auth';
 import * as Haptics from 'expo-haptics';
 
 export default function LoginScreen() {
-  const { selectedRole, setPendingPhone } = useAuth();
+  const { selectedRole, setPendingPhone, setSelectedRole, detectRoleFromPhone } = useAuth();
   const [phone, setPhone] = useState<string>('');
   const [error, setError] = useState<string>('');
 
@@ -31,9 +31,18 @@ export default function LoginScreen() {
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     console.log('[Login] Phone submitted:', cleaned);
+    const detected = detectRoleFromPhone(cleaned);
+    if (detected && detected !== selectedRole) {
+      console.log('[Login] Auto-adjusting role to', detected);
+      setSelectedRole(detected);
+    }
     setPendingPhone(cleaned);
     router.push('/otp' as any);
-  }, [phone, setPendingPhone]);
+  }, [phone, setPendingPhone, detectRoleFromPhone, selectedRole, setSelectedRole]);
+
+  const goRegister = useCallback(() => {
+    router.push('/register' as any);
+  }, []);
 
   const testCred = selectedRole === 'driver' ? TEST_CREDENTIALS.driver : TEST_CREDENTIALS.client;
 
@@ -109,6 +118,16 @@ export default function LoginScreen() {
         >
           <Text style={styles.continueButtonText}>Continuer</Text>
           <ArrowRight size={20} color="#FFFFFF" strokeWidth={2.5} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.registerLink}
+          onPress={goRegister}
+          testID="register-link"
+        >
+          <Text style={styles.registerLinkText}>
+            Pas encore de compte ? <Text style={styles.registerLinkStrong}>S&apos;inscrire</Text>
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -265,5 +284,18 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600' as const,
     color: '#FFFFFF',
+  },
+  registerLink: {
+    alignSelf: 'center',
+    paddingVertical: 14,
+    marginTop: 8,
+  },
+  registerLinkText: {
+    fontSize: 14,
+    color: theme.textSecondary,
+  },
+  registerLinkStrong: {
+    color: theme.primary,
+    fontWeight: '700' as const,
   },
 });

@@ -21,11 +21,31 @@ import * as Haptics from 'expo-haptics';
 const OTP_LENGTH = 4;
 
 export default function OtpScreen() {
-  const { pendingPhone, verifyOtp, selectedRole } = useAuth();
+  const { pendingPhone, verifyOtp, resendOtp, selectedRole } = useAuth();
   const [code, setCode] = useState<string>('');
   const [focusedIndex, setFocusedIndex] = useState<number>(0);
+  const [resendCooldown, setResendCooldown] = useState<number>(0);
   const inputRef = useRef<TextInput | null>(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
+
+  const handleResend = useCallback(async () => {
+    if (resendCooldown > 0 || resendOtp.isPending) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    try {
+      await resendOtp.mutateAsync();
+      setResendCooldown(30);
+      Alert.alert('Code envoyé', 'Un nouveau code a été envoyé à votre numéro.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erreur de renvoi';
+      Alert.alert('Erreur', message);
+    }
+  }, [resendCooldown, resendOtp]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -136,8 +156,24 @@ export default function OtpScreen() {
           </Text>
         )}
 
-        <TouchableOpacity style={styles.resendButton} testID="resend-button">
-          <Text style={styles.resendText}>Renvoyer le code</Text>
+        <TouchableOpacity
+          style={styles.resendButton}
+          onPress={handleResend}
+          disabled={resendCooldown > 0 || resendOtp.isPending}
+          testID="resend-button"
+        >
+          <Text
+            style={[
+              styles.resendText,
+              (resendCooldown > 0 || resendOtp.isPending) && styles.resendTextDisabled,
+            ]}
+          >
+            {resendCooldown > 0
+              ? `Renvoyer dans ${resendCooldown}s`
+              : resendOtp.isPending
+                ? 'Envoi...'
+                : 'Renvoyer le code'}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -274,6 +310,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: theme.primary,
     fontWeight: '600' as const,
+  },
+  resendTextDisabled: {
+    color: theme.textLight,
   },
   verifyButton: {
     backgroundColor: theme.primary,

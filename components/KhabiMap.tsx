@@ -3,10 +3,13 @@ import { View, StyleSheet, Text, Platform } from 'react-native';
 import { MapPin } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { DEFAULT_LOCATION } from '@/mocks/data';
+import { useLocation, Coordinates } from '@/providers/LocationProvider';
 
 interface KhabiMapProps {
   height?: number;
   showPin?: boolean;
+  markers?: { id: string; coordinate: Coordinates; title?: string; color?: 'primary' | 'accent' }[];
+  centerOnUser?: boolean;
 }
 
 type MapsModule = typeof import('react-native-maps');
@@ -42,7 +45,15 @@ class MapErrorBoundary extends React.Component<
   }
 }
 
-function MapPlaceholder({ height, showPin }: { height: number; showPin: boolean }) {
+function MapPlaceholder({
+  height,
+  showPin,
+  label,
+}: {
+  height: number;
+  showPin: boolean;
+  label: string;
+}) {
   return (
     <View style={[styles.webMap, { height }]}>
       <View style={styles.webMapGrid}>
@@ -59,41 +70,69 @@ function MapPlaceholder({ height, showPin }: { height: number; showPin: boolean 
         </View>
       )}
       <View style={styles.webMapLabel}>
-        <Text style={styles.webMapLabelText}>Kinshasa, RDC</Text>
+        <Text style={styles.webMapLabelText}>{label}</Text>
       </View>
     </View>
   );
 }
 
-export default function KhabiMap({ height = 220, showPin = true }: KhabiMapProps) {
+export default function KhabiMap({
+  height = 220,
+  showPin = true,
+  markers,
+  centerOnUser = true,
+}: KhabiMapProps) {
+  const { region, address } = useLocation();
+
   if (Platform.OS === 'web') {
-    return <MapPlaceholder height={height} showPin={showPin} />;
+    return <MapPlaceholder height={height} showPin={showPin} label={address} />;
   }
 
   const Maps = loadMapsModule();
   if (!Maps) {
-    return <MapPlaceholder height={height} showPin={showPin} />;
+    return <MapPlaceholder height={height} showPin={showPin} label={address} />;
   }
 
   const { default: MapView, Marker } = Maps;
 
+  const mapRegion = centerOnUser
+    ? region
+    : {
+        latitude: DEFAULT_LOCATION.latitude,
+        longitude: DEFAULT_LOCATION.longitude,
+        latitudeDelta: DEFAULT_LOCATION.latitudeDelta,
+        longitudeDelta: DEFAULT_LOCATION.longitudeDelta,
+      };
+
   return (
-    <MapErrorBoundary fallback={<MapPlaceholder height={height} showPin={showPin} />}>
+    <MapErrorBoundary
+      fallback={<MapPlaceholder height={height} showPin={showPin} label={address} />}
+    >
       <View style={[styles.mapContainer, { height }]}>
         <MapView
           style={styles.map}
-          initialRegion={DEFAULT_LOCATION}
+          initialRegion={mapRegion}
+          region={mapRegion}
           showsMyLocationButton={false}
         >
           {showPin && (
             <Marker
               coordinate={{
-                latitude: DEFAULT_LOCATION.latitude,
-                longitude: DEFAULT_LOCATION.longitude,
+                latitude: mapRegion.latitude,
+                longitude: mapRegion.longitude,
               }}
               title="Votre position"
+              pinColor={theme.primary}
             />
           )}
+          {markers?.map((m) => (
+            <Marker
+              key={m.id}
+              coordinate={m.coordinate}
+              title={m.title}
+              pinColor={m.color === 'accent' ? theme.accent : theme.primary}
+            />
+          ))}
         </MapView>
       </View>
     </MapErrorBoundary>
