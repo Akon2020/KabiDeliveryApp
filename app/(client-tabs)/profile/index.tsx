@@ -1,21 +1,22 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { User, MapPin, CreditCard, CircleHelp, LogOut, ChevronRight, Settings } from 'lucide-react-native';
+import { MapPin, CreditCard, CircleHelp, LogOut, ChevronRight, Settings, Pencil, Receipt } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/providers/AuthProvider';
 import { theme } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
 
 const MENU_ITEMS = [
-  { id: 'address', label: 'Mes adresses', icon: MapPin, color: theme.primary },
-  { id: 'payment', label: 'Paiement', icon: CreditCard, color: theme.accent },
-  { id: 'settings', label: 'Paramètres', icon: Settings, color: theme.textSecondary },
-  { id: 'help', label: 'Aide & Support', icon: CircleHelp, color: '#7C3AED' },
+  { id: 'addresses', label: 'Mes adresses', icon: MapPin, color: theme.primary, route: '/addresses' },
+  { id: 'payment-methods', label: 'Moyens de paiement', icon: CreditCard, color: theme.accent, route: '/payment-methods' },
+  { id: 'transactions', label: 'Historique de paiement', icon: Receipt, color: '#0EA5E9', route: '/transactions' },
+  { id: 'settings', label: 'Paramètres', icon: Settings, color: theme.textSecondary, route: '/settings' },
+  { id: 'help', label: 'Aide & Support', icon: CircleHelp, color: '#7C3AED', route: '/help' },
 ];
 
 export default function ClientProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user, logout, profilePhoto } = useAuth();
 
   const handleLogout = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -44,20 +45,29 @@ export default function ClientProfileScreen() {
       >
         <Text style={styles.screenTitle}>Profil</Text>
 
-        <View style={styles.userCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user?.name?.charAt(0)?.toUpperCase() ?? 'U'}
-            </Text>
-          </View>
+        <TouchableOpacity
+          style={styles.userCard}
+          onPress={() => router.push('/edit-profile' as any)}
+          activeOpacity={0.85}
+          testID="edit-profile"
+        >
+          {profilePhoto ? (
+            <Image source={{ uri: profilePhoto }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {user?.name?.charAt(0)?.toUpperCase() ?? 'U'}
+              </Text>
+            </View>
+          )}
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{user?.name ?? 'Utilisateur'}</Text>
             <Text style={styles.userPhone}>{user?.phone ?? ''}</Text>
           </View>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>Client</Text>
+          <View style={styles.editBadge}>
+            <Pencil size={14} color={theme.primary} strokeWidth={2} />
           </View>
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.menuCard}>
           {MENU_ITEMS.map((item, index) => (
@@ -65,6 +75,8 @@ export default function ClientProfileScreen() {
               key={item.id}
               style={[styles.menuItem, index < MENU_ITEMS.length - 1 && styles.menuItemBorder]}
               activeOpacity={0.7}
+              onPress={() => router.push(item.route as any)}
+              testID={`menu-${item.id}`}
             >
               <View style={[styles.menuIcon, { backgroundColor: `${item.color}14` }]}>
                 <item.icon size={20} color={item.color} strokeWidth={1.8} />
@@ -146,16 +158,18 @@ const styles = StyleSheet.create({
     color: theme.textSecondary,
     marginTop: 2,
   },
-  roleBadge: {
-    backgroundColor: theme.primaryLight,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  avatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
   },
-  roleBadgeText: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    color: theme.primary,
+  editBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: theme.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   menuCard: {
     backgroundColor: theme.surface,

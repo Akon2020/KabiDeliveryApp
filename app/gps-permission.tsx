@@ -6,112 +6,98 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  InteractionManager,
 } from 'react-native';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { MapPin, Navigation } from 'lucide-react-native';
 import { useAuth } from '@/providers/AuthProvider';
+import { useLocation } from '@/providers/LocationProvider';
+import { useNotifications } from '@/providers/NotificationsProvider';
 import { theme } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 
 export default function GpsPermissionScreen() {
   const { grantGPS, user } = useAuth();
-  const [isRequesting, setIsRequesting] = useState(false);
+  const { refreshLocation } = useLocation();
+  const { requestPermission: requestNotifPermission } = useNotifications();
+  const [isRequesting, setIsRequesting] = useState<boolean>(false);
 
-    await requestPermissionSafely();
+  const navigateHome = useCallback(() => {
+    if (user?.role === 'driver') {
+      router.replace('/(driver-tabs)/dashboard' as any);
+    } else {
+      router.replace('/(client-tabs)/home' as any);
+    }
+  }, [user]);
 
+  const finalizeFlow = useCallback(async () => {
     try {
       await grantGPS.mutateAsync();
     } catch (err) {
-      console.error("[GPS] Error persisting GPS grant:", err);
-      isProcessingRef.current = false;
-      Alert.alert("Erreur", "Une erreur est survenue. Veuillez réessayer.");
-      return;
+      console.log('[GPS] Persist error:', err);
     }
-
+    requestNotifPermission().catch(() => {});
     InteractionManager.runAfterInteractions(() => {
       navigateHome();
     });
-  }, [grantGPS, requestPermissionSafely, navigateHome]);
-
-  const handleSkip = useCallback(async () => {
-    if (isProcessingRef.current) return;
-    isProcessingRef.current = true;
-
-    try {
-      await grantGPS.mutateAsync();
-    } catch (err) {
-      console.error("[GPS] Error persisting GPS skip:", err);
-      isProcessingRef.current = false;
-      Alert.alert("Erreur", "Une erreur est survenue. Veuillez réessayer.");
-      return;
-    }
-
-    InteractionManager.runAfterInteractions(() => {
-      navigateHome();
-    });
-  }, [grantGPS, navigateHome]);
-
-  const finalizeFlow = useCallback(() => {
-    if (!grantGPS.isPending) {
-      grantGPS.mutate();
-    }
-    navigateHome();
-  }, [grantGPS, navigateHome]);
+  }, [grantGPS, navigateHome, requestNotifPermission]);
 
   const handleAllow = useCallback(async () => {
     if (isRequesting) return;
-
     setIsRequesting(true);
 
     try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch {}
 
       if (Platform.OS === 'web') {
-        finalizeFlow();
+        await finalizeFlow();
         return;
       }
 
-      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      const servicesEnabled = await Location.hasServicesEnabledAsync().catch(() => true);
       if (!servicesEnabled) {
         Alert.alert(
-          'Localisation desactivee',
-          'Activez le GPS de votre telephone puis reessayez.'
+          'Localisation désactivée',
+          'Activez le GPS de votre téléphone puis réessayez.'
         );
         return;
       }
 
-      const currentPermission = await Location.getForegroundPermissionsAsync();
-      let status = currentPermission.status;
+      const current = await Location.getForegroundPermissionsAsync();
+      let status = current.status;
 
       if (status !== 'granted') {
-        const requestedPermission =
-          await Location.requestForegroundPermissionsAsync();
-        status = requestedPermission.status;
+        const requested = await Location.requestForegroundPermissionsAsync();
+        status = requested.status;
       }
 
       console.log('[GPS] Permission status:', status);
 
       if (status === 'granted') {
-        finalizeFlow();
+        refreshLocation().catch(() => {});
+        await finalizeFlow();
         return;
       }
 
       Alert.alert(
         'Permission requise',
-        'Activez la localisation dans les parametres pour une meilleure experience.'
+        'Activez la localisation dans les paramètres pour une meilleure expérience.',
+        [
+          { text: 'Plus tard', style: 'cancel', onPress: () => finalizeFlow() },
+          { text: 'Continuer', onPress: () => finalizeFlow() },
+        ]
       );
     } catch (err) {
       console.log('[GPS] Error requesting permission:', err);
-      Alert.alert(
-        'Erreur de localisation',
-        "Impossible de demander la permission de localisation sur cet appareil."
-      );
+      await finalizeFlow();
     } finally {
       setIsRequesting(false);
     }
-  }, [finalizeFlow, isRequesting]);
+  }, [finalizeFlow, isRequesting, refreshLocation]);
 
   const handleSkip = useCallback(() => {
     finalizeFlow();
@@ -149,7 +135,7 @@ export default function GpsPermissionScreen() {
           >
             <Navigation size={20} color="#FFFFFF" strokeWidth={2} />
             <Text style={styles.allowButtonText}>
-              {isRequesting ? 'Verification...' : 'Autoriser la localisation'}
+              {isRequesting ? 'Vérification...' : 'Autoriser la localisation'}
             </Text>
           </TouchableOpacity>
 
@@ -157,6 +143,7 @@ export default function GpsPermissionScreen() {
             style={styles.skipButton}
             onPress={handleSkip}
             testID="skip-gps-button"
+            disabled={isRequesting}
           >
             <Text style={styles.skipButtonText}>Plus tard</Text>
           </TouchableOpacity>
@@ -173,15 +160,15 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 32,
   },
   illustration: {
     width: 200,
     height: 200,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 48,
   },
   outerCircle: {
@@ -189,24 +176,24 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 80,
     backgroundColor: theme.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   middleCircle: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: "rgba(10,143,123,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: 'rgba(10,143,123,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   innerCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
     backgroundColor: theme.surface,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -214,7 +201,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   pulse1: {
-    position: "absolute",
+    position: 'absolute',
     top: 10,
     right: 20,
     width: 14,
@@ -224,7 +211,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   pulse2: {
-    position: "absolute",
+    position: 'absolute',
     bottom: 25,
     left: 15,
     width: 10,
@@ -235,29 +222,29 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: "700" as const,
+    fontWeight: '700' as const,
     color: theme.text,
-    textAlign: "center",
+    textAlign: 'center',
     marginBottom: 12,
   },
   description: {
     fontSize: 16,
     color: theme.textSecondary,
-    textAlign: "center",
+    textAlign: 'center',
     lineHeight: 24,
     marginBottom: 48,
   },
   buttons: {
-    width: "100%",
+    width: '100%',
     gap: 16,
   },
   allowButton: {
     backgroundColor: theme.primary,
     borderRadius: 16,
     paddingVertical: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 10,
     shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 6 },
@@ -267,16 +254,16 @@ const styles = StyleSheet.create({
   },
   allowButtonText: {
     fontSize: 17,
-    fontWeight: "600" as const,
-    color: "#FFFFFF",
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
   },
   skipButton: {
     paddingVertical: 14,
-    alignItems: "center",
+    alignItems: 'center',
   },
   skipButtonText: {
     fontSize: 16,
     color: theme.textSecondary,
-    fontWeight: "500" as const,
+    fontWeight: '500' as const,
   },
 });

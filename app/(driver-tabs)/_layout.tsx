@@ -1,9 +1,12 @@
 import { Tabs, useRouter } from 'expo-router';
 import { LayoutDashboard, Wallet, User } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
+import { useOrders } from '@/providers/OrdersProvider';
 
 export default function DriverTabLayout() {
   const router = useRouter();
+  const { activeMissions, pendingMissions } = useOrders();
+  const dashboardBadge = activeMissions.length + pendingMissions.length;
 
   return (
     <Tabs
@@ -27,6 +30,8 @@ export default function DriverTabLayout() {
         options={{
           title: 'Dashboard',
           tabBarIcon: ({ color, size }) => <LayoutDashboard size={size} color={color} strokeWidth={1.8} />,
+          tabBarBadge: dashboardBadge > 0 ? dashboardBadge : undefined,
+          tabBarBadgeStyle: { backgroundColor: theme.accent, color: '#FFF' },
         }}
         listeners={{
           tabPress: (e) => {

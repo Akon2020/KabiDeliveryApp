@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
+  Alert,
+  Linking,
 } from 'react-native';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
-import { MapPin, Phone, User, Clock, Package, CheckCircle, Truck, ChefHat, CircleDot } from 'lucide-react-native';
+import { MapPin, Phone, User, Clock, Package, CheckCircle, Truck, ChefHat, CircleDot, XCircle } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { useOrders } from '@/providers/OrdersProvider';
 import { OrderStatus } from '@/types';
@@ -25,10 +27,42 @@ const STATUS_ICONS: Record<string, React.ComponentType<{ size: number; color: st
 
 export default function OrderDetailScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
-  const { orders } = useOrders();
+  const { orders, cancelOrder } = useOrders();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const order = orders.find((o) => o.id === orderId);
+
+  const canCancel = order?.status === 'pending' || order?.status === 'confirmed';
+
+  const handleCall = useCallback((phone?: string) => {
+    if (!phone) return;
+    const normalized = phone.replace(/\s/g, '');
+    Linking.openURL(`tel:${normalized}`).catch((e) => {
+      console.log('[OrderDetail] Linking error', e);
+      Alert.alert('Erreur', "Impossible de lancer l'appel.");
+    });
+  }, []);
+
+  const handleCancel = useCallback(() => {
+    if (!order) return;
+    Alert.alert(
+      'Annuler la commande',
+      'Voulez-vous vraiment annuler cette commande ?',
+      [
+        { text: 'Non', style: 'cancel' },
+        {
+          text: 'Annuler',
+          style: 'destructive',
+          onPress: () => {
+            const ok = cancelOrder(order.id);
+            if (!ok) {
+              Alert.alert('Impossible', 'Cette commande ne peut plus être annulée.');
+            }
+          },
+        },
+      ],
+    );
+  }, [order, cancelOrder]);
 
   useEffect(() => {
     if (order && order.status !== 'delivered' && order.status !== 'cancelled') {
@@ -145,10 +179,26 @@ export default function OrderDetailScreen() {
               <Text style={styles.driverName}>{order.driverName}</Text>
               <Text style={styles.driverRole}>Votre livreur</Text>
             </View>
-            <TouchableOpacity style={styles.callButton}>
+            <TouchableOpacity
+              style={styles.callButton}
+              onPress={() => handleCall(order.clientPhone)}
+              testID="call-driver"
+            >
               <Phone size={20} color={theme.primary} strokeWidth={2} />
             </TouchableOpacity>
           </View>
+        )}
+
+        {canCancel && (
+          <TouchableOpacity
+            style={styles.cancelOrderButton}
+            onPress={handleCancel}
+            activeOpacity={0.85}
+            testID="cancel-order"
+          >
+            <XCircle size={18} color={theme.error} strokeWidth={2} />
+            <Text style={styles.cancelOrderText}>Annuler la commande</Text>
+          </TouchableOpacity>
         )}
 
         <View style={styles.addressCard}>
@@ -474,5 +524,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800' as const,
     color: theme.primary,
+  },
+  cancelOrderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: theme.errorLight,
+    marginHorizontal: 20,
+    marginTop: 4,
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
+  cancelOrderText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: theme.error,
   },
 });
