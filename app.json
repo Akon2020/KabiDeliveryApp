@@ -4,7 +4,7 @@
     "slug": "KabiDeliveryApp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/iconn.jpg",
+    "icon": "./assets/images/icon.png",
     "scheme": "kabideliveryapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -20,8 +20,8 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#258675",
-        "foregroundImage": "./assets/images/logo.png",
-        "monochromeImage": "./assets/images/logo.png"
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "package": "app.akonizk.kabideliveryapp",
       "versionCode": 1,
@@ -34,14 +34,14 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/iconn.jpg"
+      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/iconn.jpg",
+          "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#258675",

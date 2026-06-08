@@ -38,9 +38,15 @@ export default function GpsPermissionScreen() {
     } catch (err) {
       console.log('[GPS] Persist error:', err);
     }
-    requestNotifPermission().catch(() => {});
     InteractionManager.runAfterInteractions(() => {
       navigateHome();
+      setTimeout(() => {
+        try {
+          requestNotifPermission().catch(() => {});
+        } catch (e) {
+          console.log('[GPS] notif permission request failed:', e);
+        }
+      }, 1500);
     });
   }, [grantGPS, navigateHome, requestNotifPermission]);
 

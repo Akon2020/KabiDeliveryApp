@@ -1,8 +1,7 @@
-import React from 'react';
-import { View, StyleSheet, Text, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, Text, Platform, InteractionManager } from 'react-native';
 import { MapPin } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
-import { DEFAULT_LOCATION } from '@/mocks/data';
 import { useLocation, Coordinates } from '@/providers/LocationProvider';
 
 interface KhabiMapProps {
@@ -12,13 +11,22 @@ interface KhabiMapProps {
   centerOnUser?: boolean;
 }
 
+// Set to `true` only after you have:
+//   1. Added a Google Maps API key in app.json under android.config.googleMaps.apiKey
+//   2. Rebuilt the APK with `expo prebuild --clean && eas build`
+// Until then, the placeholder is rendered everywhere — this prevents native
+// crashes on Android release builds where MapView can fail to initialize.
+const NATIVE_MAPS_ENABLED = false;
+
 type MapsModule = typeof import('react-native-maps');
 let MapsModuleRef: MapsModule | null = null;
 let MapsLoadFailed = false;
 
 function loadMapsModule(): MapsModule | null {
+  if (!NATIVE_MAPS_ENABLED) return null;
   if (MapsModuleRef || MapsLoadFailed) return MapsModuleRef;
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     MapsModuleRef = require('react-native-maps') as MapsModule;
     return MapsModuleRef;
   } catch (err) {
@@ -49,16 +57,18 @@ function MapPlaceholder({
   height,
   showPin,
   label,
+  markers,
 }: {
   height: number;
   showPin: boolean;
   label: string;
+  markers?: KhabiMapProps['markers'];
 }) {
   return (
-    <View style={[styles.webMap, { height }]}>
-      <View style={styles.webMapGrid}>
+    <View style={[styles.placeholder, { height }]}>
+      <View style={styles.placeholderGrid}>
         {Array.from({ length: 12 }).map((_, i) => (
-          <View key={i} style={styles.webMapBlock} />
+          <View key={i} style={styles.placeholderBlock} />
         ))}
       </View>
       {showPin && (
@@ -69,8 +79,15 @@ function MapPlaceholder({
           </View>
         </View>
       )}
-      <View style={styles.webMapLabel}>
-        <Text style={styles.webMapLabelText}>{label}</Text>
+      {markers && markers.length > 0 && (
+        <View style={styles.markersHint}>
+          <Text style={styles.markersHintText}>
+            {markers.length} repère{markers.length > 1 ? 's' : ''}
+          </Text>
+        </View>
+      )}
+      <View style={styles.placeholderLabel}>
+        <Text style={styles.placeholderLabelText}>{label}</Text>
       </View>
     </View>
   );
@@ -83,14 +100,23 @@ export default function KhabiMap({
   centerOnUser = true,
 }: KhabiMapProps) {
   const { region, address } = useLocation();
+  const [readyToRenderMap, setReadyToRenderMap] = useState<boolean>(false);
 
-  if (Platform.OS === 'web') {
-    return <MapPlaceholder height={height} showPin={showPin} label={address} />;
+  useEffect(() => {
+    if (!NATIVE_MAPS_ENABLED) return;
+    const task = InteractionManager.runAfterInteractions(() => {
+      setReadyToRenderMap(true);
+    });
+    return () => task.cancel();
+  }, []);
+
+  if (Platform.OS === 'web' || !NATIVE_MAPS_ENABLED) {
+    return <MapPlaceholder height={height} showPin={showPin} label={address} markers={markers} />;
   }
 
   const Maps = loadMapsModule();
-  if (!Maps) {
-    return <MapPlaceholder height={height} showPin={showPin} label={address} />;
+  if (!Maps || !readyToRenderMap) {
+    return <MapPlaceholder height={height} showPin={showPin} label={address} markers={markers} />;
   }
 
   const { default: MapView, Marker } = Maps;
@@ -98,21 +124,22 @@ export default function KhabiMap({
   const mapRegion = centerOnUser
     ? region
     : {
-        latitude: DEFAULT_LOCATION.latitude,
-        longitude: DEFAULT_LOCATION.longitude,
-        latitudeDelta: DEFAULT_LOCATION.latitudeDelta,
-        longitudeDelta: DEFAULT_LOCATION.longitudeDelta,
+        latitude: region.latitude,
+        longitude: region.longitude,
+        latitudeDelta: region.latitudeDelta,
+        longitudeDelta: region.longitudeDelta,
       };
 
   return (
     <MapErrorBoundary
-      fallback={<MapPlaceholder height={height} showPin={showPin} label={address} />}
+      fallback={
+        <MapPlaceholder height={height} showPin={showPin} label={address} markers={markers} />
+      }
     >
       <View style={[styles.mapContainer, { height }]}>
         <MapView
           style={styles.map}
           initialRegion={mapRegion}
-          region={mapRegion}
           showsMyLocationButton={false}
         >
           {showPin && (
@@ -147,20 +174,20 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  webMap: {
+  placeholder: {
     borderRadius: 16,
     backgroundColor: '#E8F4F0',
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  webMapGrid: {
+  placeholderGrid: {
     ...StyleSheet.absoluteFillObject,
     flexDirection: 'row',
     flexWrap: 'wrap',
     opacity: 0.3,
   },
-  webMapBlock: {
+  placeholderBlock: {
     width: '25%',
     height: '33.33%',
     borderWidth: 0.5,
@@ -190,7 +217,21 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: 'rgba(0,0,0,0.1)',
   },
-  webMapLabel: {
+  markersHint: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: theme.accent,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  markersHintText: {
+    fontSize: 12,
+    color: '#FFF',
+    fontWeight: '700' as const,
+  },
+  placeholderLabel: {
     position: 'absolute',
     bottom: 12,
     left: 12,
@@ -199,7 +240,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  webMapLabelText: {
+  placeholderLabelText: {
     fontSize: 12,
     color: theme.textSecondary,
     fontWeight: '500' as const,
